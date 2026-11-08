@@ -61,6 +61,12 @@ xcodebuild -project mac/CouchSubs.xcodeproj -scheme CouchSubs -configuration Rel
 
 APP="$BUILD/Build/Products/Release/CouchSubs.app"
 [[ -d "$APP" ]] || { echo "Derleme başarısız."; exit 1; }
+# macOS 27 SDK'sıyla gelen pipe2/dup3 macOS 26'da yok; zorunlu istenirse uygulama açılışta kapanır.
+for BIN in "$APP"/Contents/MacOS/*; do
+  if dyld_info -imports "$BIN" | grep -E "[[:space:]]_(pipe2|dup3)[[:space:]]" | grep -qv weak-import; then
+    echo "$BIN macOS 26'da olmayan pipe2/dup3'ü istiyor; uygulama macOS 26'da açılmaz."; exit 1
+  fi
+done
 if [[ -n "$DEVELOPER_ID" ]]; then
   # Sparkle'ın iç yardımcıları da bizim kimliğimizle, sıkılaştırılmış çalışmayla imzalanır (Sparkle belgelerindeki
   # sıra: içten dışa), ardından uygulama yeniden mühürlenir.

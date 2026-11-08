@@ -66,7 +66,12 @@ FW="$ROOT/third-party/build/CChiaki.xcframework"
 STAGE="$ROOT/third-party/build/xcframework-stage"
 rm -rf "$FW" "$STAGE"
 mkdir -p "$STAGE/include"
-libtool -static -o "$STAGE/libCChiaki.a" "$OUT"/lib/*.a
+# macOS 27'de derlenmiş bağımlılıklar macOS 26'da olmayan pipe2/dup3'ü isteyebilir; yerlerine bizimkiler girer.
+xcrun clang -c -O2 -arch arm64 -mmacosx-version-min=26.0 scripts/macos-compat.c -o "$STAGE/macos-compat.o"
+libtool -static -o "$STAGE/libCChiaki.a" "$OUT"/lib/*.a "$STAGE/macos-compat.o"
+# Uygulama macOS 26'yı hedefliyor; daha yeni macOS için derlenmiş parça varsa orada olmayan bir sembolü isteyebilir.
+NEWER=$(otool -l "$STAGE/libCChiaki.a" | awk '/^.*\.a\(/ {o=$0} $1=="minos" && $2+0 > 26.0 {print o}' | sort -u)
+[[ -z "$NEWER" ]] || { echo "Uyarı: macOS 26'dan yeni hedefle derlenmiş parçalar (macOS 26'da açılışı kontrol edin):"; echo "$NEWER" | head -20; }
 cp -R "$OUT/include/chiaki" "$STAGE/include/"
 {
   echo '#include <stdbool.h>'
